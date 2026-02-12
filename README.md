@@ -17,6 +17,7 @@ Instructions:
     ```
 
 3. After the script finishes, reboot the system. You should boot straight into the desktop.
-4. After reboot use ```gh auth login``` to authenticate git with GitHub   
-5. Run ```sync``` to pull all missing repos 
-6. Reboot and get to work!
+4. Open the terminal with SUPER+T
+5. Run ```gh auth login``` to authenticate git with GitHub   
+6. Run ```sync``` to pull all missing repos 
+7. Reboot and get to work!
