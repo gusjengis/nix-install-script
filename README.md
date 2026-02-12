@@ -16,7 +16,7 @@ Instructions:
     curl -fsSL https://raw.githubusercontent.com/gusjengis/nix-install-script/main/bootstrap-fresh-nixos.sh | bash -s -- gusjengis
     ```
 
-3. After the script finishes, reboot the system
+3. After the script finishes, reboot the system. You should boot straight into the desktop.
 4. After reboot use ```gh auth login``` to authenticate git with GitHub   
-5. Run ```sync``` to pull any private repos that would have failed during the earlier script
+5. Run ```sync``` to pull all missing repos 
 6. Reboot and get to work!
