@@ -41,5 +41,5 @@ sudo git clone https://github.com/gusjengis/nix-modules.git "$NIX_MODULES_DIR"
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIX_MODULES_DIR"
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "/home/$TARGET_USER"
 
-sudo nixos-rebuild switch --impure --flake /etc/nix-modules/nixosModules/flake.nix
-sudo -u "$TARGET_USER" home-manager switch --impure --flake "$HOME_MANAGER_DIR/"
+sudo env NIX_CONFIG="experimental-features = nix-command flakes" nixos-rebuild switch --impure --flake /etc/nix-modules/nixosModules/flake.nix
+sudo -u "$TARGET_USER" env NIX_CONFIG="experimental-features = nix-command flakes" home-manager switch --impure --flake "$HOME_MANAGER_DIR/"
