@@ -28,14 +28,15 @@ cat > "$CONFIG_FILE" <<EOF
 }
 EOF
 
-nix-shell -p git --run "git -C '$NIXOS_DIR' init"
-nix-shell -p git --run "git -C '$NIXOS_DIR' add -A"
-nix-shell -p git --run "git -C '$NIXOS_DIR' -c user.name='$TARGET_USER' -c user.email='$TARGET_USER@$(hostname -s)' commit -m 'initial /etc/nixos'"
+rm -rf "$HOME_MANAGER_DIR"
+mkdir -p "$HOME_MANAGER_DIR"
+curl -fsSL https://github.com/gusjengis/.home-manager/archive/refs/heads/main.tar.gz | tar -xzf - --strip-components=1 -C "$HOME_MANAGER_DIR"
 
-nix-shell -p git --run "git clone https://github.com/gusjengis/.home-manager.git '$HOME_MANAGER_DIR'"
-sudo nix-shell -p git --run "git clone https://github.com/gusjengis/nix-modules.git '$NIX_MODULES_DIR'"
+sudo rm -rf "$NIX_MODULES_DIR"
+sudo mkdir -p "$NIX_MODULES_DIR"
+curl -fsSL https://github.com/gusjengis/nix-modules/archive/refs/heads/main.tar.gz | sudo tar -xzf - --strip-components=1 -C "$NIX_MODULES_DIR"
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIX_MODULES_DIR"
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "/home/$TARGET_USER"
 
-sudo env NIX_CONFIG="experimental-features = nix-command flakes" bash "$(command -v nixos-rebuild)" switch --impure --flake /etc/nix-modules/nixosModules/flake.nix
-sudo -u "$TARGET_USER" env NIX_CONFIG="experimental-features = nix-command flakes" bash "$(command -v home-manager)" switch --impure --flake "$HOME_MANAGER_DIR/"
+sudo env NIX_CONFIG="experimental-features = nix-command flakes" nixos-rebuild switch --impure --flake /etc/nix-modules/nixosModules/flake.nix
+sudo -u "$TARGET_USER" env NIX_CONFIG="experimental-features = nix-command flakes" home-manager switch --impure --flake "$HOME_MANAGER_DIR/"
