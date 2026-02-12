@@ -10,6 +10,8 @@ HOME_DIR="/home/$TARGET_USER/"
 HOME_MANAGER_DIR="$HOME_DIR/.home-manager"
 NIX_MODULES_DIR="/etc/nix-modules"
 
+export NIX_CONFIG="experimental-features = nix-command flakes"
+
 if [ "${BOOTSTRAP_IN_NIX_SHELL:-0}" != "1" ]; then
   exec nix --extra-experimental-features "nix-command flakes" shell nixpkgs#git -c env BOOTSTRAP_IN_NIX_SHELL=1 bash "$0" "$@"
 fi
