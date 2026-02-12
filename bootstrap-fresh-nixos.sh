@@ -33,7 +33,7 @@ sudo rm -rf "$NIX_MODULES_DIR"
 sudo mkdir -p "$NIX_MODULES_DIR"
 echo Downloading system config...
 SYSTEM_TAR="$(mktemp)"
-curl --fail --location https://github.com/gusjengis/nix-modules/archive/refs/heads/main.tar.gz -o "$SYSTEM_TAR"
+curl  --location https://github.com/gusjengis/nix-modules/archive/refs/heads/main.tar.gz -o "$SYSTEM_TAR"
 sudo tar -xzf "$SYSTEM_TAR" --strip-components=1 -C "$NIX_MODULES_DIR"
 rm -f "$SYSTEM_TAR"
 
@@ -41,7 +41,7 @@ rm -rf "$HOME_MANAGER_DIR"
 mkdir -p "$HOME_MANAGER_DIR"
 echo Downloading home config...
 HOME_TAR="$(mktemp)"
-curl --fail --location https://github.com/gusjengis/.home-manager/archive/refs/heads/main.tar.gz -o "$HOME_TAR"
+curl fail --location https://github.com/gusjengis/.home-manager/archive/refs/heads/main.tar.gz -o "$HOME_TAR"
 tar -xzf "$HOME_TAR" --strip-components=1 -C "$HOME_MANAGER_DIR"
 rm -f "$HOME_TAR"
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIX_MODULES_DIR"
@@ -51,15 +51,3 @@ echo Installing system config...
 sudo env NIX_CONFIG="experimental-features = nix-command flakes" nixos-rebuild switch --impure --flake /etc/nix-modules/nixosModules/
 echo Installing home config...
 sudo -u "$TARGET_USER" env NIX_CONFIG="experimental-features = nix-command flakes" home-manager switch --impure --flake "$HOME_MANAGER_DIR/"
-
-CURRENT_GIT_NAME="$(sudo -u "$TARGET_USER" git config --global --get user.name || true)"
-CURRENT_GIT_EMAIL="$(sudo -u "$TARGET_USER" git config --global --get user.email || true)"
-
-echo "Git authentication:"
-sudo -u "$TARGET_USER" gh auth login
-
-sudo -u "$TARGET_USER" "$HOME_MANAGER_DIR/scripts/sync-repos.sh"
-
-sudo env NIX_CONFIG="experimental-features = nix-command flakes" nixos-rebuild switch --impure --flake /etc/nix-modules/nixosModules/
-sudo -u "$TARGET_USER" env NIX_CONFIG="experimental-features = nix-command flakes" home-manager switch --impure --flake "$HOME_MANAGER_DIR/"
-sudo reboot
