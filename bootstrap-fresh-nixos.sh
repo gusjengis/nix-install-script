@@ -53,5 +53,5 @@ echo Installing home config...
 sudo -u "$TARGET_USER" env NIX_CONFIG="experimental-features = nix-command flakes" home-manager switch --impure --flake "$HOME_MANAGER_DIR/"
 
 echo "Scheduling kitty update on next boot..."
-sudo -u "$TARGET_USER" systemd-run --user --on-boot=30s /bin/bash -lc "kitty -e '$HOME_MANAGER_DIR/scripts/update.sh'; sudo reboot"
+sudo -u "$TARGET_USER" systemd-run --user --on-boot=30s /run/current-system/sw/bin/bash -lc "/run/current-system/sw/bin/kitty -e '$HOME_MANAGER_DIR/scripts/update.sh'; /run/wrappers/bin/sudo reboot"
 sudo reboot
