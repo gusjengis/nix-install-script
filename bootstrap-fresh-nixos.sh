@@ -70,3 +70,6 @@ sudo -u "$TARGET_USER" "$HOME_MANAGER_DIR/scripts/sync-repos.sh"
 
 sudo env NIX_CONFIG="experimental-features = nix-command flakes" nixos-rebuild switch --impure --flake /etc/nix-modules/nixosModules/
 sudo -u "$TARGET_USER" env NIX_CONFIG="experimental-features = nix-command flakes" home-manager switch --impure --flake "$HOME_MANAGER_DIR/"
+sudo reboot
+
+
