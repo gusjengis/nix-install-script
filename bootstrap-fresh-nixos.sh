@@ -37,21 +37,18 @@ curl --fail --location https://github.com/gusjengis/nix-modules/archive/refs/hea
 sudo tar -xzf "$SYSTEM_TAR" --strip-components=1 -C "$NIX_MODULES_DIR"
 rm -f "$SYSTEM_TAR"
 
+sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIX_MODULES_DIR"
+echo Installing system config...
+sudo env NIX_CONFIG="experimental-features = nix-command flakes" nixos-rebuild switch --impure --flake /etc/nix-modules/nixosModules/
+echo Replacing temporary system config with git clone...
+sudo rm -rf "$NIX_MODULES_DIR"
+sudo git clone https://github.com/gusjengis/nix-modules "$NIX_MODULES_DIR"
+sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIX_MODULES_DIR"
 rm -rf "$HOME_MANAGER_DIR"
 mkdir -p "$HOME_MANAGER_DIR"
 echo Downloading home config...
-HOME_TAR="$(mktemp)"
-curl --fail --location https://github.com/gusjengis/.home-manager/archive/refs/heads/main.tar.gz -o "$HOME_TAR"
-tar -xzf "$HOME_TAR" --strip-components=1 -C "$HOME_MANAGER_DIR"
-rm -f "$HOME_TAR"
-sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIX_MODULES_DIR"
+git clone https://github.com/gusjengis/home-manager "$HOME_MANAGER_DIR"
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "/home/$TARGET_USER"
 
-echo Installing system config...
-sudo env NIX_CONFIG="experimental-features = nix-command flakes" nixos-rebuild switch --impure --flake /etc/nix-modules/nixosModules/
 echo Installing home config...
 sudo -u "$TARGET_USER" env NIX_CONFIG="experimental-features = nix-command flakes" home-manager switch --impure --flake "$HOME_MANAGER_DIR/"
-
-echo "Scheduling kitty update on next boot..."
-sudo -u "$TARGET_USER" systemd-run --user --on-boot=30s /run/current-system/sw/bin/bash -lc "/run/current-system/sw/bin/kitty -e '$HOME_MANAGER_DIR/scripts/update.sh'; /run/wrappers/bin/sudo reboot"
-sudo reboot
