@@ -28,12 +28,12 @@ cat > "$CONFIG_FILE" <<EOF
 }
 EOF
 
-nix shell nixpkgs#git -c git -C "$NIXOS_DIR" init
-nix shell nixpkgs#git -c git -C "$NIXOS_DIR" add -A
-nix shell nixpkgs#git -c git -C "$NIXOS_DIR" -c user.name="$TARGET_USER" -c user.email="$TARGET_USER@$(hostname -s)" commit -m "initial /etc/nixos"
+nix-shell -p git --run "git -C '$NIXOS_DIR' init"
+nix-shell -p git --run "git -C '$NIXOS_DIR' add -A"
+nix-shell -p git --run "git -C '$NIXOS_DIR' -c user.name='$TARGET_USER' -c user.email='$TARGET_USER@$(hostname -s)' commit -m 'initial /etc/nixos'"
 
-nix shell nixpkgs#git -c git clone https://github.com/gusjengis/.home-manager.git "$HOME_MANAGER_DIR"
-sudo env NIX_CONFIG="experimental-features = nix-command flakes" nix shell nixpkgs#git -c git clone https://github.com/gusjengis/nix-modules.git "$NIX_MODULES_DIR"
+nix-shell -p git --run "git clone https://github.com/gusjengis/.home-manager.git '$HOME_MANAGER_DIR'"
+sudo nix-shell -p git --run "git clone https://github.com/gusjengis/nix-modules.git '$NIX_MODULES_DIR'"
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIX_MODULES_DIR"
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "/home/$TARGET_USER"
 
