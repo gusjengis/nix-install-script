@@ -32,12 +32,12 @@ EOF
 sudo rm -rf "$NIX_MODULES_DIR"
 sudo mkdir -p "$NIX_MODULES_DIR"
 echo Downloading system config...
-curl -fsSL https://github.com/gusjengis/nix-modules/archive/refs/heads/main.tar.gz | sudo tar -xzf - --strip-components=1 -C "$NIX_MODULES_DIR"
+curl -fL# https://github.com/gusjengis/nix-modules/archive/refs/heads/main.tar.gz | sudo tar -xzf - --strip-components=1 -C "$NIX_MODULES_DIR"
 
 rm -rf "$HOME_MANAGER_DIR"
 mkdir -p "$HOME_MANAGER_DIR"
 echo Downloading home config...
-curl -fsSL https://github.com/gusjengis/.home-manager/archive/refs/heads/main.tar.gz | tar -xzf - --strip-components=1 -C "$HOME_MANAGER_DIR"
+curl -fL# https://github.com/gusjengis/.home-manager/archive/refs/heads/main.tar.gz | tar -xzf - --strip-components=1 -C "$HOME_MANAGER_DIR"
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIX_MODULES_DIR"
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "/home/$TARGET_USER"
 
@@ -71,5 +71,4 @@ sudo -u "$TARGET_USER" "$HOME_MANAGER_DIR/scripts/sync-repos.sh"
 sudo env NIX_CONFIG="experimental-features = nix-command flakes" nixos-rebuild switch --impure --flake /etc/nix-modules/nixosModules/
 sudo -u "$TARGET_USER" env NIX_CONFIG="experimental-features = nix-command flakes" home-manager switch --impure --flake "$HOME_MANAGER_DIR/"
 sudo reboot
-
 
