@@ -50,20 +50,6 @@ CURRENT_GIT_NAME="$(sudo -u "$TARGET_USER" git config --global --get user.name |
 CURRENT_GIT_EMAIL="$(sudo -u "$TARGET_USER" git config --global --get user.email || true)"
 
 echo "Git authentication:"
-read -rp "Git user.name [$CURRENT_GIT_NAME]: " INPUT_GIT_NAME
-read -rp "Git user.email [$CURRENT_GIT_EMAIL]: " INPUT_GIT_EMAIL
-
-GIT_NAME="${INPUT_GIT_NAME:-$CURRENT_GIT_NAME}"
-GIT_EMAIL="${INPUT_GIT_EMAIL:-$CURRENT_GIT_EMAIL}"
-
-if [ -n "$GIT_NAME" ]; then
-  sudo -u "$TARGET_USER" git config --global user.name "$GIT_NAME"
-fi
-
-if [ -n "$GIT_EMAIL" ]; then
-  sudo -u "$TARGET_USER" git config --global user.email "$GIT_EMAIL"
-fi
-
 sudo -u "$TARGET_USER" gh auth login
 
 sudo -u "$TARGET_USER" "$HOME_MANAGER_DIR/scripts/sync-repos.sh"
