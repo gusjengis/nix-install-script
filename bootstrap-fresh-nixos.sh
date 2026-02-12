@@ -12,10 +12,6 @@ NIX_MODULES_DIR="/etc/nix-modules"
 
 export NIX_CONFIG="experimental-features = nix-command flakes"
 
-if [ "${BOOTSTRAP_IN_NIX_SHELL:-0}" != "1" ]; then
-  exec nix --extra-experimental-features "nix-command flakes" shell nixpkgs#git -c env BOOTSTRAP_IN_NIX_SHELL=1 bash "$0" "$@"
-fi
-
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIXOS_DIR"
 
 STATE_LINE="$(grep -E '^[[:space:]]*system\.stateVersion[[:space:]]*=' "$CONFIG_FILE" | head -n 1)"
