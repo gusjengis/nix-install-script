@@ -52,5 +52,6 @@ sudo env NIX_CONFIG="experimental-features = nix-command flakes" nixos-rebuild s
 echo Installing home config...
 sudo -u "$TARGET_USER" env NIX_CONFIG="experimental-features = nix-command flakes" home-manager switch --impure --flake "$HOME_MANAGER_DIR/"
 
-sudo -u "$TARGET_USER" systemd-run --user --on-boot=30s kitty -e "$HOME_MANAGER_DIR/scripts/update.sh && sudo reboot"
+echo "Scheduling kitty update on next boot..."
+sudo -u "$TARGET_USER" systemd-run --user --on-boot=30s /bin/bash -lc "kitty -e '$HOME_MANAGER_DIR/scripts/update.sh'; sudo reboot"
 sudo reboot
