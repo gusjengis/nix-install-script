@@ -33,7 +33,7 @@ sudo rm -rf "$NIX_MODULES_DIR"
 sudo mkdir -p "$NIX_MODULES_DIR"
 echo Downloading system config...
 SYSTEM_TAR="$(mktemp)"
-curl --fail --location --progress-bar https://github.com/gusjengis/nix-modules/archive/refs/heads/main.tar.gz -o "$SYSTEM_TAR"
+curl --fail --location https://github.com/gusjengis/nix-modules/archive/refs/heads/main.tar.gz -o "$SYSTEM_TAR"
 sudo tar -xzf "$SYSTEM_TAR" --strip-components=1 -C "$NIX_MODULES_DIR"
 rm -f "$SYSTEM_TAR"
 
@@ -41,7 +41,7 @@ rm -rf "$HOME_MANAGER_DIR"
 mkdir -p "$HOME_MANAGER_DIR"
 echo Downloading home config...
 HOME_TAR="$(mktemp)"
-curl --fail --location --progress-bar https://github.com/gusjengis/.home-manager/archive/refs/heads/main.tar.gz -o "$HOME_TAR"
+curl --fail --location https://github.com/gusjengis/.home-manager/archive/refs/heads/main.tar.gz -o "$HOME_TAR"
 tar -xzf "$HOME_TAR" --strip-components=1 -C "$HOME_MANAGER_DIR"
 rm -f "$HOME_TAR"
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIX_MODULES_DIR"
