@@ -11,7 +11,7 @@ HOME_MANAGER_DIR="$HOME_DIR/.home-manager"
 NIX_MODULES_DIR="/etc/nix-modules"
 
 if [ "${BOOTSTRAP_IN_NIX_SHELL:-0}" != "1" ]; then
-  exec nix shell nixpkgs#git -c env BOOTSTRAP_IN_NIX_SHELL=1 bash "$0" "$@"
+  exec nix --extra-experimental-features "nix-command flakes" shell nixpkgs#git -c env BOOTSTRAP_IN_NIX_SHELL=1 bash "$0" "$@"
 fi
 
 sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIXOS_DIR"
