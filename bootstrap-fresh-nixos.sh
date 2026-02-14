@@ -402,7 +402,7 @@ main() {
 
   echo Replacing temporary system config with git clone...
   sudo rm -rf "$NIX_MODULES_DIR"
-  sudo git clone https://github.com/gusjengis/nix-modules "$NIX_MODULES_DIR"
+  sudo git clone https://github.com/gusjengis/nix-modules.git "$NIX_MODULES_DIR"
   sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$NIX_MODULES_DIR"
 
   printf '%s\n' "$SYSTEM_CONFIG_CONTENT" > "$CONFIG_FILE"
@@ -410,7 +410,7 @@ main() {
   rm -rf "$HOME_MANAGER_DIR"
   mkdir -p "$HOME_MANAGER_DIR"
   echo Downloading home config...
-  git clone https://github.com/gusjengis/home-manager "$HOME_MANAGER_DIR"
+  git clone https://github.com/gusjengis/home-manager.git "$HOME_MANAGER_DIR"
 
   echo Generating home-manager module selections...
   HOME_MODULES_CONTENT="$(generate_home_modules_content "$HOME_MANAGER_DIR")"
