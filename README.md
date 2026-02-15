@@ -14,7 +14,7 @@ Instructions:
     - Use nmtui to connect to the network
     - Run the following command:
     ```
-    curl -fsSL https://raw.githubusercontent.com/gusjengis/nix-install-script/main/bootstrap-fresh-nixos.sh | bash -s -- gusjengis
+    curl -fsSL https://raw.githubusercontent.com/gusjengis/nix-install-script/main/install.sh | bash -s -- gusjengis
     ```
     - Select the modules you want to enable in the prompts
 
