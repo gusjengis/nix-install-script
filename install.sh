@@ -83,13 +83,63 @@ discover_source_defaults() {
   )
 }
 
+extract_option_snippets() {
+  local file="$1"
+  local opt="$2"
+
+  awk -v opt="$opt" '
+    function count_delta(line,    clean, i, c, delta) {
+      clean = line
+      sub(/#.*/, "", clean)
+      delta = 0
+      for (i = 1; i <= length(clean); i++) {
+        c = substr(clean, i, 1)
+        if (c == "{" || c == "[" || c == "(") delta++
+        if (c == "}" || c == "]" || c == ")") delta--
+      }
+      return delta
+    }
+
+    function is_match(line) {
+      return index(line, "options." opt ".enable") || index(line, "config." opt ".enable") || index(line, opt ".enable")
+    }
+
+    function emit_snippet(start,    end, depth, j) {
+      end = start
+      depth = 0
+      for (j = start; j <= line_count; j++) {
+        depth += count_delta(lines[j])
+        end = j
+        if (j > start && depth <= 0) break
+        if (j == start && depth <= 0) break
+      }
+
+      if (printed) print ""
+      printf "@@ %s:%d-%d\n", FILENAME, start, end
+      for (j = start; j <= end; j++) print lines[j]
+      printed = 1
+      return end
+    }
+
+    { lines[++line_count] = $0 }
+
+    END {
+      for (i = 1; i <= line_count; i++) {
+        if (is_match(lines[i])) {
+          i = emit_snippet(i)
+        }
+      }
+    }
+  ' "$file"
+}
+
 discover_option_previews() {
   local root_dir="$1"
   local previews_map_name="$2"
   local exclude_modules_file="${3:-false}"
   shift 3
   local options=("$@")
-  local file opt preview
+  local file opt preview snippets
   local -n previews_ref="$previews_map_name"
 
   previews_ref=()
@@ -101,13 +151,13 @@ discover_option_previews() {
 
   while IFS= read -r -d '' file; do
     for opt in "${options[@]}"; do
-      if grep -Fq "options.$opt.enable" "$file" || grep -Fq "$opt.enable" "$file"; then
+      snippets="$(extract_option_snippets "$file" "$opt")"
+      if [[ -n "$snippets" ]]; then
         preview="${previews_ref[$opt]}"
         if [[ -n "$preview" ]]; then
           preview+=$'\n\n'
         fi
-        preview+="# $file"$'\n'
-        preview+="$(sed -n '1,240p' "$file")"
+        preview+="$snippets"
         previews_ref["$opt"]="$preview"
       fi
     done
@@ -205,6 +255,10 @@ pick_modules_native() {
   local preview_scroll=0
   local current_preview_option=""
   local key key2 key3 i opt mark pointer rows cols size left_width right_width body_rows preview_rows max_preview_scroll viewport row option_index left_line preview_line preview_index footer_line left_cell right_cell frame
+  local color_reset=$'\033[0m'
+  local color_header=$'\033[1;36m'
+  local color_code=$'\033[37m'
+  local color_footer=$'\033[2;33m'
   local -a selected=()
   local -a preview_lines=()
   local tty="/dev/tty"
@@ -293,6 +347,11 @@ pick_modules_native() {
 
       format_field left_cell "$left_line" "$left_width"
       format_field right_cell "$preview_line" "$right_width"
+      if [[ "$preview_line" == @@* ]]; then
+        right_cell="$color_header$right_cell$color_reset"
+      elif [[ -n "$preview_line" ]]; then
+        right_cell="$color_code$right_cell$color_reset"
+      fi
       frame+="$left_cell | $right_cell"$'\n'
     done
 
@@ -302,6 +361,7 @@ pick_modules_native() {
     fi
     format_field left_cell "" "$left_width"
     format_field right_cell "$footer_line" "$right_width"
+    right_cell="$color_footer$right_cell$color_reset"
     frame+="$left_cell | $right_cell"
     printf '%s' "$frame" > "$tty"
 
