@@ -398,7 +398,7 @@ main() {
   printf '%s\n' "$SYSTEM_CONFIG_CONTENT" > "$CONFIG_FILE"
 
   echo Installing system config...
-  sudo env NIX_CONFIG="experimental-features = nix-command flakes" nixos-rebuild switch --impure --flake /etc/nix-modules/nixosModules/
+  sudo env NIX_CONFIG="experimental-features = nix-command flakes" nixos-rebuild switch --impure --flake /etc/nix-modules/
 
   echo Replacing temporary system config with git clone...
   sudo rm -rf "$NIX_MODULES_DIR"
