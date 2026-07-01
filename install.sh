@@ -284,7 +284,7 @@ pick_modules_native() {
       printf '%s | %s\n' "$(truncate_field "$left_line" "$left_width")" "$(truncate_field "$preview_line" "$right_width")" > "$tty"
     done
 
-    footer_line="Preview ${preview_scroll}-${preview_scroll + body_rows} of $preview_rows"
+    footer_line="Preview ${preview_scroll}-$((preview_scroll + body_rows)) of $preview_rows"
     if ((max_preview_scroll > 0)); then
       footer_line+="; U/D scrolls right pane"
     fi
