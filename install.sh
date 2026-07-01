@@ -199,7 +199,8 @@ pick_modules_native() {
   local options=("$@")
   local total="${#options[@]}"
   local cursor=0
-  local key key2 key3 i opt mark pointer rows cols left_width right_width usable_rows list_rows preview_rows viewport row option_index left_line right_line preview_line
+  local preview_scroll=0
+  local key key2 key3 i opt mark pointer rows cols size left_width right_width body_rows preview_rows max_preview_scroll viewport row option_index left_line right_line preview_line preview_index footer_line
   local -a selected=()
   local -a preview_lines=()
   local tty="/dev/tty"
@@ -221,34 +222,40 @@ pick_modules_native() {
   done
 
   while true; do
-    rows="$(tput lines 2>/dev/null || printf '24')"
-    cols="$(tput cols 2>/dev/null || printf '100')"
+    size="$(stty size < "$tty" 2>/dev/null || printf '24 100')"
+    rows="${size%% *}"
+    cols="${size##* }"
+    if ((rows < 10)); then
+      rows=10
+    fi
     if ((cols < 80)); then
       cols=80
     fi
     left_width=$((cols / 2 - 1))
     right_width=$((cols - left_width - 3))
-    usable_rows=$((rows - 5))
-    if ((usable_rows < 8)); then
-      usable_rows=8
-    fi
+    body_rows=$((rows - 4))
 
     viewport=0
-    list_rows="$usable_rows"
-    if ((cursor >= list_rows)); then
-      viewport=$((cursor - list_rows + 1))
+    if ((cursor >= body_rows)); then
+      viewport=$((cursor - body_rows + 1))
     fi
 
     mapfile -t preview_lines <<< "${CURRENT_PICK_PREVIEWS[${options[$cursor]}]:-No preview available.}"
     preview_rows="${#preview_lines[@]}"
+    max_preview_scroll=$((preview_rows - body_rows))
+    if ((max_preview_scroll < 0)); then
+      max_preview_scroll=0
+    fi
+    if ((preview_scroll > max_preview_scroll)); then
+      preview_scroll="$max_preview_scroll"
+    fi
 
     clear > "$tty"
     echo "$title" > "$tty"
-    echo "Use Up/Down to move, Space to toggle, Enter to submit." > "$tty"
-    echo > "$tty"
+    echo "Use Up/Down to move, Space to toggle, U/D to scroll preview, Enter to submit." > "$tty"
     printf '%s | %s\n' "$(truncate_field "Modules" "$left_width")" "$(truncate_field "Raw Nix source for ${options[$cursor]}" "$right_width")" > "$tty"
 
-    for ((row = 0; row < usable_rows; row++)); do
+    for ((row = 0; row < body_rows; row++)); do
       option_index=$((viewport + row))
       left_line=""
       if ((option_index < total)); then
@@ -267,8 +274,9 @@ pick_modules_native() {
         left_line="$pointer $mark ${options[$option_index]}"
       fi
 
-      if ((row < preview_rows)); then
-        preview_line="${preview_lines[$row]}"
+      preview_index=$((preview_scroll + row))
+      if ((preview_index < preview_rows)); then
+        preview_line="${preview_lines[$preview_index]}"
       else
         preview_line=""
       fi
@@ -276,12 +284,11 @@ pick_modules_native() {
       printf '%s | %s\n' "$(truncate_field "$left_line" "$left_width")" "$(truncate_field "$preview_line" "$right_width")" > "$tty"
     done
 
-    if ((preview_rows > usable_rows)); then
-      right_line="Preview truncated to fit terminal; resize taller to see more."
-    else
-      right_line=""
+    footer_line="Preview ${preview_scroll}-${preview_scroll + body_rows} of $preview_rows"
+    if ((max_preview_scroll > 0)); then
+      footer_line+="; U/D scrolls right pane"
     fi
-    printf '%s | %s\n' "$(truncate_field "" "$left_width")" "$(truncate_field "$right_line" "$right_width")" > "$tty"
+    printf '%s | %s\n' "$(truncate_field "" "$left_width")" "$(truncate_field "$footer_line" "$right_width")" > "$tty"
 
     IFS= read -rsn1 key < "$tty"
 
@@ -293,6 +300,14 @@ pick_modules_native() {
       else
         selected[$cursor]=1
       fi
+    elif [[ "$key" == "U" || "$key" == "u" ]]; then
+      if ((preview_scroll > 0)); then
+        ((preview_scroll--))
+      fi
+    elif [[ "$key" == "D" || "$key" == "d" ]]; then
+      if ((preview_scroll < max_preview_scroll)); then
+        ((preview_scroll++))
+      fi
     elif [[ "$key" == $'\x1b' ]]; then
       IFS= read -rsn1 key2 < "$tty"
       IFS= read -rsn1 key3 < "$tty"
@@ -303,12 +318,14 @@ pick_modules_native() {
             if ((cursor < 0)); then
               cursor=$((total - 1))
             fi
+            preview_scroll=0
             ;;
           B)
             ((cursor++))
             if ((cursor >= total)); then
               cursor=0
             fi
+            preview_scroll=0
             ;;
         esac
       fi
