@@ -15,6 +15,7 @@ SYSTEM_MODULES_DIR="$NIX_MODULES_DIR/nixosModules"
 export NIX_CONFIG="experimental-features = nix-command flakes"
 
 declare -A CURRENT_PICK_DEFAULTS=()
+declare -A CURRENT_PICK_PREVIEWS=()
 
 discover_enable_options() {
   local root_dir="$1"
@@ -82,6 +83,65 @@ discover_source_defaults() {
   )
 }
 
+discover_option_previews() {
+  local root_dir="$1"
+  local previews_map_name="$2"
+  local exclude_modules_file="${3:-false}"
+  shift 3
+  local options=("$@")
+  local file opt preview
+  local -n previews_ref="$previews_map_name"
+
+  previews_ref=()
+  [[ -d "$root_dir" ]] || return 0
+
+  for opt in "${options[@]}"; do
+    previews_ref["$opt"]=""
+  done
+
+  while IFS= read -r -d '' file; do
+    for opt in "${options[@]}"; do
+      if grep -Fq "options.$opt.enable" "$file" || grep -Fq "$opt.enable" "$file"; then
+        preview="${previews_ref[$opt]}"
+        if [[ -n "$preview" ]]; then
+          preview+=$'\n\n'
+        fi
+        preview+="# $file"$'\n'
+        preview+="$(sed -n '1,240p' "$file")"
+        previews_ref["$opt"]="$preview"
+      fi
+    done
+  done < <(
+    if [[ "$exclude_modules_file" == "true" ]]; then
+      find "$root_dir" -type f -name '*.nix' ! -name 'modules.nix' ! -name 'local.nix' -print0
+    else
+      find "$root_dir" -type f -name '*.nix' -print0
+    fi
+  )
+
+  for opt in "${options[@]}"; do
+    if [[ -z "${previews_ref[$opt]}" ]]; then
+      previews_ref["$opt"]="No source file found for $opt."
+    fi
+  done
+}
+
+truncate_field() {
+  local text="$1"
+  local width="$2"
+
+  if ((width <= 0)); then
+    return 0
+  fi
+
+  text="${text//$'\t'/  }"
+  if ((${#text} > width)); then
+    printf '%s' "${text:0:width}"
+  else
+    printf '%-*s' "$width" "$text"
+  fi
+}
+
 pick_modules_gum() {
   local title="$1"
   shift
@@ -139,8 +199,9 @@ pick_modules_native() {
   local options=("$@")
   local total="${#options[@]}"
   local cursor=0
-  local key key2 key3 i opt mark pointer
+  local key key2 key3 i opt mark pointer rows cols left_width right_width usable_rows list_rows preview_rows viewport row option_index left_line right_line preview_line
   local -a selected=()
+  local -a preview_lines=()
   local tty="/dev/tty"
 
   if [[ ! -r "$tty" || ! -w "$tty" ]]; then
@@ -160,26 +221,67 @@ pick_modules_native() {
   done
 
   while true; do
+    rows="$(tput lines 2>/dev/null || printf '24')"
+    cols="$(tput cols 2>/dev/null || printf '100')"
+    if ((cols < 80)); then
+      cols=80
+    fi
+    left_width=$((cols / 2 - 1))
+    right_width=$((cols - left_width - 3))
+    usable_rows=$((rows - 5))
+    if ((usable_rows < 8)); then
+      usable_rows=8
+    fi
+
+    viewport=0
+    list_rows="$usable_rows"
+    if ((cursor >= list_rows)); then
+      viewport=$((cursor - list_rows + 1))
+    fi
+
+    mapfile -t preview_lines <<< "${CURRENT_PICK_PREVIEWS[${options[$cursor]}]:-No preview available.}"
+    preview_rows="${#preview_lines[@]}"
+
     clear > "$tty"
     echo "$title" > "$tty"
     echo "Use Up/Down to move, Space to toggle, Enter to submit." > "$tty"
     echo > "$tty"
+    printf '%s | %s\n' "$(truncate_field "Modules" "$left_width")" "$(truncate_field "Raw Nix source for ${options[$cursor]}" "$right_width")" > "$tty"
 
-    for ((i = 0; i < total; i++)); do
-      if [[ "${selected[$i]}" -eq 1 ]]; then
-        mark="[x]"
-      else
-        mark="[ ]"
+    for ((row = 0; row < usable_rows; row++)); do
+      option_index=$((viewport + row))
+      left_line=""
+      if ((option_index < total)); then
+        if [[ "${selected[$option_index]}" -eq 1 ]]; then
+          mark="[x]"
+        else
+          mark="[ ]"
+        fi
+
+        if [[ "$option_index" -eq "$cursor" ]]; then
+          pointer=">"
+        else
+          pointer=" "
+        fi
+
+        left_line="$pointer $mark ${options[$option_index]}"
       fi
 
-      if [[ "$i" -eq "$cursor" ]]; then
-        pointer=">"
+      if ((row < preview_rows)); then
+        preview_line="${preview_lines[$row]}"
       else
-        pointer=" "
+        preview_line=""
       fi
 
-      printf "%s %s %s\n" "$pointer" "$mark" "${options[$i]}" > "$tty"
+      printf '%s | %s\n' "$(truncate_field "$left_line" "$left_width")" "$(truncate_field "$preview_line" "$right_width")" > "$tty"
     done
+
+    if ((preview_rows > usable_rows)); then
+      right_line="Preview truncated to fit terminal; resize taller to see more."
+    else
+      right_line=""
+    fi
+    printf '%s | %s\n' "$(truncate_field "" "$left_width")" "$(truncate_field "$right_line" "$right_width")" > "$tty"
 
     IFS= read -rsn1 key < "$tty"
 
@@ -234,16 +336,6 @@ pick_modules() {
   for opt in "${options[@]}"; do
     CURRENT_PICK_DEFAULTS["$opt"]="${defaults_ref[$opt]:-false}"
   done
-
-  if command -v gum >/dev/null 2>&1; then
-    pick_modules_gum "$title (toggle with space, confirm with enter)" "${options[@]}"
-    return 0
-  fi
-
-  if command -v whiptail >/dev/null 2>&1; then
-    pick_modules_whiptail "$title" "$prompt" "${options[@]}"
-    return 0
-  fi
 
   pick_modules_native "$title" "${options[@]}"
 }
@@ -347,6 +439,7 @@ generate_system_config_content() {
 
   mapfile -t system_options < <(discover_enable_options "$module_root")
   discover_source_defaults "$module_root" system_defaults false
+  discover_option_previews "$module_root" CURRENT_PICK_PREVIEWS false "${system_options[@]}"
 
   if [[ ${#system_options[@]} -eq 0 ]]; then
     echo "Warning: no system enable options discovered in $module_root" >&2
@@ -367,6 +460,7 @@ generate_home_modules_content() {
 
   mapfile -t home_options < <(discover_enable_options "$home_root")
   discover_source_defaults "$home_root" home_defaults true
+  discover_option_previews "$home_root" CURRENT_PICK_PREVIEWS true "${home_options[@]}"
 
   if [[ ${#home_options[@]} -eq 0 ]]; then
     echo "Warning: no home enable options discovered in $home_root" >&2
