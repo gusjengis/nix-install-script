@@ -126,19 +126,22 @@ discover_option_previews() {
   done
 }
 
-truncate_field() {
-  local text="$1"
-  local width="$2"
+format_field() {
+  local output_var="$1"
+  local text="$2"
+  local width="$3"
+  local -n output_ref="$output_var"
 
   if ((width <= 0)); then
+    output_ref=""
     return 0
   fi
 
   text="${text//$'\t'/  }"
   if ((${#text} > width)); then
-    printf '%s' "${text:0:width}"
+    output_ref="${text:0:width}"
   else
-    printf '%-*s' "$width" "$text"
+    printf -v output_ref '%-*s' "$width" "$text"
   fi
 }
 
@@ -200,7 +203,8 @@ pick_modules_native() {
   local total="${#options[@]}"
   local cursor=0
   local preview_scroll=0
-  local key key2 key3 i opt mark pointer rows cols size left_width right_width body_rows preview_rows max_preview_scroll viewport row option_index left_line right_line preview_line preview_index footer_line
+  local current_preview_option=""
+  local key key2 key3 i opt mark pointer rows cols size left_width right_width body_rows preview_rows max_preview_scroll viewport row option_index left_line preview_line preview_index footer_line left_cell right_cell frame
   local -a selected=()
   local -a preview_lines=()
   local tty="/dev/tty"
@@ -240,7 +244,11 @@ pick_modules_native() {
       viewport=$((cursor - body_rows + 1))
     fi
 
-    mapfile -t preview_lines <<< "${CURRENT_PICK_PREVIEWS[${options[$cursor]}]:-No preview available.}"
+    opt="${options[$cursor]}"
+    if [[ "$opt" != "$current_preview_option" ]]; then
+      mapfile -t preview_lines <<< "${CURRENT_PICK_PREVIEWS[$opt]:-No preview available.}"
+      current_preview_option="$opt"
+    fi
     preview_rows="${#preview_lines[@]}"
     max_preview_scroll=$((preview_rows - body_rows))
     if ((max_preview_scroll < 0)); then
@@ -250,10 +258,12 @@ pick_modules_native() {
       preview_scroll="$max_preview_scroll"
     fi
 
-    clear > "$tty"
-    echo "$title" > "$tty"
-    echo "Use Up/Down to move, Space to toggle, U/D to scroll preview, Enter to submit." > "$tty"
-    printf '%s | %s\n' "$(truncate_field "Modules" "$left_width")" "$(truncate_field "Raw Nix source for ${options[$cursor]}" "$right_width")" > "$tty"
+    frame=$'\033[H\033[2J'
+    frame+="$title"$'\n'
+    frame+="Use Up/Down to move, Space to toggle, U/D to scroll preview, Enter to submit."$'\n'
+    format_field left_cell "Modules" "$left_width"
+    format_field right_cell "Raw Nix source for $opt" "$right_width"
+    frame+="$left_cell | $right_cell"$'\n'
 
     for ((row = 0; row < body_rows; row++)); do
       option_index=$((viewport + row))
@@ -281,14 +291,19 @@ pick_modules_native() {
         preview_line=""
       fi
 
-      printf '%s | %s\n' "$(truncate_field "$left_line" "$left_width")" "$(truncate_field "$preview_line" "$right_width")" > "$tty"
+      format_field left_cell "$left_line" "$left_width"
+      format_field right_cell "$preview_line" "$right_width"
+      frame+="$left_cell | $right_cell"$'\n'
     done
 
     footer_line="Preview ${preview_scroll}-$((preview_scroll + body_rows)) of $preview_rows"
     if ((max_preview_scroll > 0)); then
       footer_line+="; U/D scrolls right pane"
     fi
-    printf '%s | %s\n' "$(truncate_field "" "$left_width")" "$(truncate_field "$footer_line" "$right_width")" > "$tty"
+    format_field left_cell "" "$left_width"
+    format_field right_cell "$footer_line" "$right_width"
+    frame+="$left_cell | $right_cell"
+    printf '%s' "$frame" > "$tty"
 
     IFS= read -rsn1 key < "$tty"
 
