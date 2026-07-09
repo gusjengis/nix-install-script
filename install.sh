@@ -10,7 +10,7 @@ HOME_DIR="/home/$TARGET_USER"
 HOME_MANAGER_DIR="$HOME_DIR/.home-manager"
 HOME_MODULES_FILE="$HOME_MANAGER_DIR/modules.nix"
 NIX_MODULES_DIR="/etc/nix-modules"
-SYSTEM_MODULES_DIR="$NIX_MODULES_DIR/nixosModules"
+SYSTEM_MODULES_DIR="$NIX_MODULES_DIR"
 
 export NIX_CONFIG="experimental-features = nix-command flakes"
 
