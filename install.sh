@@ -21,9 +21,79 @@ discover_enable_options() {
   local root_dir="$1"
   [[ -d "$root_dir" ]] || return 0
 
-  grep -RhoE '[[:space:]]*(options\.)?[A-Za-z0-9_.-]+\.enable[[:space:]]*=[[:space:]]*lib\.mkEnableOption' "$root_dir" 2>/dev/null \
-    | sed -E 's/^[[:space:]]*//; s/[[:space:]]*=.*$//; s/^options\.//' \
-    | sed -E 's/\.enable$//' \
+  find "$root_dir" -type f -name '*.nix' -print0 \
+    | xargs -0 awk '
+      function count_delta(line,    clean, i, c, delta) {
+        clean = line
+        sub(/#.*/, "", clean)
+        delta = 0
+        for (i = 1; i <= length(clean); i++) {
+          c = substr(clean, i, 1)
+          if (c == "{") delta++
+          if (c == "}") delta--
+        }
+        return delta
+      }
+
+      function prefix(    i, out) {
+        out = ""
+        for (i = 1; i <= stack_depth; i++) {
+          if (out != "") out = out "."
+          out = out stack[i]
+        }
+        return out
+      }
+
+      function emit(opt,    p) {
+        p = prefix()
+        if (p != "") opt = p "." opt
+        print opt
+      }
+
+      {
+        line = $0
+        sub(/#.*/, "", line)
+
+        if (match(line, /^[[:space:]]*options\.([A-Za-z0-9_.-]+)\.enable[[:space:]]*=[[:space:]]*lib\.mkEnableOption/, parts)) {
+          print parts[1]
+        } else {
+          if (match(line, /^[[:space:]]*options\.([A-Za-z0-9_.-]+)[[:space:]]*=[[:space:]]*\{/, parts)) {
+            in_options = 1
+            options_depth = depth + 1
+            stack_depth = 1
+            stack[stack_depth] = parts[1]
+            stack_depths[stack_depth] = depth + 1
+          } else if (line ~ /^[[:space:]]*options[[:space:]]*=[[:space:]]*\{/) {
+            in_options = 1
+            options_depth = depth + 1
+            stack_depth = 0
+          }
+
+          if (in_options) {
+            if (match(line, /^[[:space:]]*([A-Za-z0-9_.-]+)\.enable[[:space:]]*=[[:space:]]*lib\.mkEnableOption/, parts)) {
+              emit(parts[1])
+            } else if (line ~ /^[[:space:]]*enable[[:space:]]*=[[:space:]]*lib\.mkEnableOption/) {
+              if (prefix() != "") print prefix()
+            }
+
+            if (match(line, /^[[:space:]]*([A-Za-z0-9_.-]+)[[:space:]]*=[[:space:]]*\{[[:space:]]*$/, parts) && parts[1] != "options" && parts[1] !~ /^options\./) {
+              stack_depth++
+              stack[stack_depth] = parts[1]
+              stack_depths[stack_depth] = depth + 1
+            }
+          }
+        }
+
+        depth += count_delta($0)
+        while (stack_depth > 0 && depth < stack_depths[stack_depth]) {
+          stack_depth--
+        }
+        if (in_options && depth < options_depth) {
+          in_options = 0
+          stack_depth = 0
+        }
+      }
+    ' \
     | sort -u
 }
 
